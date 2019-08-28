@@ -13,7 +13,7 @@ import sqlite3
 
 # Method for parse page
 class spider:
-  def __init__(self, _dateRangeMin, _dateRangeMax, _cursor):
+  def __init__(self, _dateRangeMin, _dateRangeMax):
     # ## Build the headers
     # Ignore SSL certificate errors
     self.ctx = ssl.create_default_context()
@@ -21,19 +21,46 @@ class spider:
     self.ctx.verify_mode = ssl.CERT_NONE
     self.dateRangeMin = _dateRangeMin
     self.dateRangeMax = _dateRangeMax
-    self.cursor = _cursor
+  
+  def connect_DB(self, db_path):
+    self.DB = sqlite3.connect(db_path)
+    self.cursor = self.DB.cursor()
+    self.insert_sql = """INSERT OR IGNORE INTO Article 
+                            (title, year, month, day, abstract, pic_url, url, isChinese) 
+                            VALUES 
+                            (?, ?, ?, ?, ?, ?, ?, ?)
+                      """
+    DB_creator_sql = """
+          CREATE TABLE IF NOT EXISTS "Article" (
+            "id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            "title"	TEXT NOT NULL UNIQUE,
+            "year"	INTEGER NOT NULL,
+            "month"	INTEGER NOT NULL,
+            "day"	INTEGER NOT NULL,
+            "abstract"	BLOB NOT NULL,
+            "pic_url"	INTEGER NOT NULL,
+            "url"	TEXT NOT NULL,
+            "isChinese"	INTEGER NOT NULL
+          );
+          """
+    self.cursor.execute(DB_creator_sql)
+
+  def disconnect_DB(self):
+    self.DB.commit()
+    self.cursor.close()
+    self.DB.close()
+    
 
   def get_CN_data(self):
     # ## Open the file
     self.handle = open("./src/data/dataCN.txt", "w")
     origin_url = "https://newshub.sustech.edu.cn/zh/?cat=3&paged="
     for i in range(1, 20):
-      result, data = self.__parse_page_CN(origin_url + str(i))
+      result = self.__parse_page_CN(origin_url + str(i))
       if result is False:
           print("Finish")
           break
-      self.cursor.execute(
-        "INSERT OR IGNORE INTO Article (title, year, month, day, abstract, pic_url, url, isChinese) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data)
+    self.DB.commit()
     self.handle.close()
 
 
@@ -52,24 +79,23 @@ class spider:
     origin_url = "https://newshub.sustech.edu.cn//?tag=arts-culture&tagall=1&paged="
     for i in range(1, 20):
       print(origin_url + str(i))
-      result, date = self.__parse_page_EN(origin_url + str(i))
+      result = self.__parse_page_EN(origin_url + str(i))
       if result is False:
         print("Finish")
         break
-      self.cursor.execute(
-        "INSERT OR IGNORE INTO Article (title, year, month, day, abstract, pic_url, url, isChinese) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data)
     self.handle.close()
 
   def __parse_page_CN(self, url):
     html = urlopen(url, context=self.ctx).read()
     soup = BeautifulSoup(html, "html.parser")
+    
     for news in soup.select(".m-newslist > ul > li"):
       date = news.find(class_="u-date").get_text().strip().replace("\n", "/")
       temp = date.split("/")
       date_num =int(temp[0] + temp[1])
       print(date_num)
       if date_num < self.dateRangeMin:
-        return False, None
+        return False
       if date_num > self.dateRangeMax:
         continue
       s = str()
@@ -85,10 +111,11 @@ class spider:
       s += "URL: " + url + "\r\n"
       print(s)
       self.handle.write(s.replace("\u2022", "").replace("\xa0", "").replace("\u200b", ""))
-    return True, (title, 2019, int(temp[0]), int(temp[1]), abstract, pic_url, url, 1)
-                # (title, year, month, day, abstract, pic_url, url, isChinese)
-  
-          
+      # (title, year, month, day, abstract, pic_url, url, isChinese)
+      data = (title, 2019, int(temp[0]), int(temp[1]), abstract, pic_url, url, 1)
+      self.cursor.execute(self.insert_sql, data)
+    return True
+                  
   def __parse_page_EN(self, url):
     def get_abstract(url_article):
       html = urlopen(url_article).read()
@@ -108,7 +135,7 @@ class spider:
       if date_num > self.dateRangeMax:
         continue
       if date_num < self.dateRangeMin:
-        return False, None
+        return False
       url_article = news.find("a").attrs['href']
       title = news.find("img").attrs["alt"]
       abstract = get_abstract(url_article)
@@ -121,6 +148,9 @@ class spider:
       str += "URL: " + url_article + "\r\n"
       print(str)
       self.handle.write(str.replace("\xa0", ""))
-    return True, (title, 2019, int(dates[0]), int(dates[1]), abstract, pic_url, url_article, 0)
-    # (title, year, month, day, abstract, pic_url, url, isChinese)
+      data = (title, 2019, int(dates[0]), int(dates[1]), abstract, pic_url, url_article, 0)
+      # (title, year, month, day, abstract, pic_url, url, isChinese)
+      self.cursor.execute(self.insert_sql, data)      
+    return True
+    
 
