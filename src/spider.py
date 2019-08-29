@@ -53,7 +53,7 @@ class spider:
 
   def get_CN_data(self):
     # ## Open the file
-    self.handle = open("./src/data/dataCN.txt", "w")
+    # self.handle = open("./src/data/dataCN.txt", "w")
     origin_url = "https://newshub.sustech.edu.cn/zh/?cat=3&paged="
     for i in range(1, 20):
       result = self.__parse_page_CN(origin_url + str(i))
@@ -61,11 +61,11 @@ class spider:
           print("Finish")
           break
     self.DB.commit()
-    self.handle.close()
+    # self.handle.close()
 
 
   def get_EN_data(self):
-    self.handle = open("./src/data/dataEN.txt", "w")
+    # self.handle = open("./src/data/dataEN.txt", "w")
     self.headers = {
       'path': '/?tag=arts-culture&tagall=1&paged=4',
       "authority": 'newshub.sustech.edu.cn,',
@@ -83,7 +83,7 @@ class spider:
       if result is False:
         print("Finish")
         break
-    self.handle.close()
+    # self.handle.close()
 
   def __parse_page_CN(self, url):
     html = urlopen(url, context=self.ctx).read()
@@ -92,25 +92,28 @@ class spider:
     for news in soup.select(".m-newslist > ul > li"):
       date = news.find(class_="u-date").get_text().strip().replace("\n", "/")
       temp = date.split("/")
-      date_num =int(temp[0] + temp[1])
+      date_num = int(temp[0] + temp[1])
       print(date_num)
       if date_num < self.dateRangeMin:
+        print("finish")
         return False
       if date_num > self.dateRangeMax:
+        print("ignore")
         continue
+      
       s = str()
       title = news.find(class_="title f-clamp").get_text().strip()
       pic_url = news.find( class_="u-pic").attrs['style'].split("(")[1].split(")")[0]
       abstract = news.find(class_="details f-clamp4").get_text().replace("\n", "")
       url = news.a.attrs.get("href")
 
-      s += "Date: " + date + "\r\n"
-      s += "Title: " + title  + "\r\n"
-      s += "PicURL: " + pic_url + "\r\n"
-      s += "Abstract: "+ abstract + "\r\n"
-      s += "URL: " + url + "\r\n"
-      print(s)
-      self.handle.write(s.replace("\u2022", "").replace("\xa0", "").replace("\u200b", ""))
+      # s += "Date: " + date + "\r\n"
+      # s += "Title: " + title  + "\r\n"
+      # s += "PicURL: " + pic_url + "\r\n"
+      # s += "Abstract: "+ abstract + "\r\n"
+      # s += "URL: " + url + "\r\n"
+      # print(s)
+      # self.handle.write(s.replace("\u2022", "").replace("\xa0", "").replace("\u200b", ""))
       # (title, year, month, day, abstract, pic_url, url, isChinese)
       data = (title, 2019, int(temp[0]), int(temp[1]), abstract, pic_url, url, 1)
       self.cursor.execute(self.insert_sql, data)
@@ -132,22 +135,24 @@ class spider:
       date = news.find(class_="date").get_text().strip()
       dates = date.split("/")
       date_num = int(dates[0] + dates[1])
-      if date_num > self.dateRangeMax:
-        continue
       if date_num < self.dateRangeMin:
+        print("finish")
         return False
+      if date_num > self.dateRangeMax:
+        print("ignore")
+        continue
       url_article = news.find("a").attrs['href']
       title = news.find("img").attrs["alt"]
       abstract = get_abstract(url_article)
       pic_url = news.find("img").attrs["src"]
-      str = ""
-      str += "Date: " + date + "\r\n"
-      str += "Title: " + title + "\r\n"
-      str += "PicURL: " + pic_url + "\r\n"
-      str += "Abstract: " + abstract + "\r\n"
-      str += "URL: " + url_article + "\r\n"
-      print(str)
-      self.handle.write(str.replace("\xa0", ""))
+      # str = ""
+      # str += "Date: " + date + "\r\n"
+      # str += "Title: " + title + "\r\n"
+      # str += "PicURL: " + pic_url + "\r\n"
+      # str += "Abstract: " + abstract + "\r\n"
+      # str += "URL: " + url_article + "\r\n"
+      # print(str)
+      # self.handle.write(str.replace("\xa0", ""))
       data = (title, 2019, int(dates[0]), int(dates[1]), abstract, pic_url, url_article, 0)
       # (title, year, month, day, abstract, pic_url, url, isChinese)
       self.cursor.execute(self.insert_sql, data)      
