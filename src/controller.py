@@ -76,22 +76,22 @@ DB.close()
 import pypandoc
 
 
-output = pypandoc.convert_file('./src/data/电子报中文大纲.md', 'html', 
+output = pypandoc.convert_file('./src/data/电子报中文大纲.md', 'html5', 
                                 outputfile='./src/data/电子报中文大纲.html')
 assert output == ""
-# output = pypandoc.convert_file('./src/data/电子报英文大纲.md', 'html', 
+output = pypandoc.convert_file('./src/data/电子报英文大纲.md', 'html', 
                                 outputfile='./src/data/电子报英文大纲.html')
-# assert output == ""
-# output = pypandoc.convert_file('./src/data/电子报分类大纲.md', 'docx', 
+assert output == ""
+output = pypandoc.convert_file('./src/data/电子报分类大纲.md', 'docx', 
                                 outputfile='./src/data/电子报分类大纲.docx')
-# assert output == ""
+assert output == ""
 print("-------------------Finish format-converting")
 
 
-os.remove('./src/data/电子报中文大纲.md')
-os.remove('./src/data/电子报英文大纲.md')
-os.remove('./src/data/电子报分类大纲.md')
-print("-------------------Reduntant files removed")
+# os.remove('./src/data/电子报中文大纲.md')
+# os.remove('./src/data/电子报英文大纲.md')
+# os.remove('./src/data/电子报分类大纲.md')
+# print("-------------------Reduntant files removed")
 
 
 
