@@ -157,5 +157,92 @@ class spider:
       # (title, year, month, day, abstract, pic_url, url, isChinese)
       self.cursor.execute(self.insert_sql, data)      
     return True
-    
 
+
+
+class TitleSpider(spider):
+  def __init__(self, _dateRangeMin, _dateRangeMax):
+    super().__init__(_dateRangeMin, _dateRangeMax)
+  def get_CN_data(self):
+    print("START get_CN_data")
+    # ## Open the file
+    # self.handle = open("./src/data/dataCN.txt", "w")
+    origin_url = "https://newshub.sustech.edu.cn/zh/news?page="
+    for i in range(0, 10):
+      result = self.__parse_page_CN(origin_url + str(i))
+      if result is False:
+          print("Finish")
+          break
+    self.DB.commit()
+    print("END get_CN_data")
+  def __parse_page_CN(self, url):
+    html = urlopen(url, context=self.ctx).read()
+    soup = BeautifulSoup(html, "html.parser")
+    
+    for news in soup.select(".m-newslist > ul > li"):
+      date = news.find(class_="u-date").get_text().strip().replace("\n", "/")
+      temp = date.split("/")
+      date_num = int(temp[0] + temp[1])
+      print(date_num)
+      if date_num < self.dateRangeMin:
+        print("finish")
+        return False
+      if date_num > self.dateRangeMax:
+        print("ignore")
+        continue
+      
+      s = str()
+      title = news.find(class_="title f-clamp").get_text().strip()
+      print(title)
+      pic_url = news.find( class_="u-pic").attrs['style'].split("(")[1].split(")")[0]
+      if pic_url.startswith('/'):
+        pic_url = 'https://newshub.sustech.edu.cn' + pic_url
+      abstract = news.find(class_="details f-clamp4").get_text().replace("\n", "")
+      url = news.a.attrs.get("href")
+      if url.startswith('/'):
+        url = 'https://newshub.sustech.edu.cn' + url
+
+      # s += "Date: " + date + "\r\n"
+      # s += "Title: " + title  + "\r\n"
+      # s += "PicURL: " + pic_url + "\r\n"
+      # s += "Abstract: "+ abstract + "\r\n"
+      # s += "URL: " + url + "\r\n"
+      # print(s)
+      # self.handle.write(s.replace("\u2022", "").replace("\xa0", "").replace("\u200b", ""))
+      # (title, year, month, day, abstract, pic_url, url, isChinese)
+      if ('2019' in url):
+        return False
+      data = (title, 2020, int(temp[0]), int(temp[1]), abstract, pic_url, url, 1)
+      self.cursor.execute(self.insert_sql, data)
+      print("write ", data)
+    return True
+  
+
+
+if __name__ == '__main__':
+  db_path = "./data/news_data.db"
+  spider = TitleSpider(1121, 1231)
+  # spider.connect_DB(db_path)
+  # spider.get_CN_data()
+  # spider.disconnect_DB()
+  DB = sqlite3.connect(db_path)
+  cursor = DB.cursor()
+
+
+  def md_format_outline(file):
+    sql_html_select = """
+        SELECT (month || '/' || day) AS date, title, url
+        FROM Article
+        WHERE year = 2020
+        AND (title LIKE '%获%' OR title LIKE '%当选%')
+        ORDER BY month DESC, day DESC"""
+    cursor.execute(sql_html_select)
+    for t in cursor.fetchall():
+      date = t[0]
+      title = t[1]
+      url = t[2]
+      # write into file 
+      file.write(date + " [" + title + "](" + url + ")\r\n\r\n")
+  md_format_outline(file = open("./data/output.md", "w"))
+  cursor.close()
+  DB.close()
